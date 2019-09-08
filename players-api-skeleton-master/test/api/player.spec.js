@@ -1,6 +1,8 @@
+// NodeJS said remove() was deprecated, user deleteMany()
 const _ = require('lodash');
-const server = require('../../src/server');
-const { User, Player } = require('../../src/models');
+const server = require('../../src');
+const Player = require('../../src/models/player.js');
+const User = require('../../src/models/user.js')
 const data = require('../util/data');
 
 let token, user;
@@ -8,19 +10,19 @@ let token, user;
 describe('Player API', () => {
 
   before(async () => {
-    await User.remove({});
+    await User.deleteMany({});
     const res = await chai.request(server)
       .post('/api/user')
       .send(data.user);
     token = res.body.token;
     user = res.body.user;
-    data.player.created_by = user.id;
-    data.player2.created_by = user.id;
+    data.player.owner = user._id;
+    data.player2.owner = user._id;
   });
 
   describe('POST /api/players', () => {
     beforeEach(async () => {
-      await Player.remove({});
+      await Player.deleteMany({});
     });
 
     it('should fail if token not provided', done => {
@@ -84,7 +86,7 @@ describe('Player API', () => {
 
   describe('GET /api/players', () => {
     beforeEach(async () => {
-      await Player.remove({});
+      await Player.deleteMany({});
     });
 
     it('should fail if token not provided', done => {
@@ -135,7 +137,7 @@ describe('Player API', () => {
       expect(res.body.players).to.be.a('array');
       expect(res.body.players.length).to.equal(2);
 
-      res.body.players.forEach(player => expect(player.id).to.be.a('string'));
+      res.body.players.forEach(player => expect(player._id).to.be.a('string'));
     });
 
     it('should not deliver players created by other users', async () => {
@@ -144,7 +146,7 @@ describe('Player API', () => {
         .send(Object.assign({}, data.user, { email: 'seconduser@foo.com' }));
 
       await Player.create(data.player);
-      await Player.create(Object.assign({}, data.player2, { created_by: userRes.body.user.id }));
+      await Player.create(Object.assign({}, data.player2, { owner: userRes.body.user._id }));
 
       let res, error;
       try {
@@ -162,13 +164,13 @@ describe('Player API', () => {
       expect(res.body.players).to.be.a('array');
       expect(res.body.players.length).to.equal(1);
 
-      res.body.players.forEach(player => expect(player.id).to.be.a('string'));
+      res.body.players.forEach(player => expect(player._id).to.be.a('string'));
     });
   });
 
-  describe('DELETE /players/:id', () => {
+  describe('DELETE /api/players/:id', () => {
     beforeEach(async () => {
-      await Player.remove({});
+      await Player.deleteMany({});
     });
 
     it('should fail if token not provided', done => {
@@ -201,12 +203,12 @@ describe('Player API', () => {
         .post('/api/user')
         .send(Object.assign({}, data.user, { email: '__deletetest__@foo.com' }));
 
-      let player = await Player.create(Object.assign({}, data.player, { created_by: userRes.body.user.id }));
+      let player = await Player.create(Object.assign({}, data.player, { owner: userRes.body.user._id }));
 
       let res, error;
       try {
         res = await chai.request(server)
-          .delete(`/api/players/${ player.id }`)
+          .delete(`/api/players/${ player._id }`)
           .set('Authorization', `Bearer ${ token }`);
       } catch (err) {
         error = err;
@@ -221,7 +223,7 @@ describe('Player API', () => {
       let res, error;
       try {
         res = await chai.request(server)
-          .delete(`/api/players/${ player.id }`)
+          .delete(`/api/players/${ player._id }`)
           .set('Authorization', `Bearer ${ token }`);
       } catch (err) {
         error = err;
@@ -230,7 +232,7 @@ describe('Player API', () => {
       expect(error).not.to.exist;
       expect(res.status).to.equal(200);
 
-      player = await Player.findById(player.id);
+      player = await Player.findById(player._id);
       expect(player).not.to.exist;
     });
   });

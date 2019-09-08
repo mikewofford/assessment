@@ -1,3 +1,3 @@
 // TODO
-const runMe = require('../../jdbRunMe')
-module.exports = {runMe};
+//const index = require('../src/models/index')
+module.exports = {};
